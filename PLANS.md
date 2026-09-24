@@ -1,0 +1,26 @@
+# PLANS
+
+Each milestone fits one ~30-minute session. Acceptance command for all: `node scripts/check.js` (plus the extra command where listed).
+
+## Milestones
+- [x] M0 setup (spec): docs, skeleton, tax rule, test runner. Stage: mvp
+- [ ] M1 Core model: `Scenario`, `Sku`, `Order`, `Decision`, `TraceEntry` records; trace formatting test. Stage: mvp
+- [ ] M2 CSV reader: parse stock/orders/tax-rate files with line-numbered errors. Accept: check + `java -cp build/classes lab.Main run --input samples/basic`. Stage: mvp
+- [ ] M3 Rule interface + registry with versions; port tax rule into it with trace output. Stage: mvp
+- [ ] M4 Inventory reservation rule with trace and unit tests. Stage: mvp
+- [ ] M5 Allocation rule (priority, then order id tie-break) with trace and tests. Stage: mvp
+- [ ] M6 Invariant checker (non-negative stock, no over-allocation, totals match); exit code 2 on violations. Accept: check + criterion 4 command. Stage: mvp
+- [ ] M7 Seeded synthetic generator + `verify-determinism`. Accept: criterion 2. Stage: mvp
+- [ ] M8 Golden legacy-behavior cases and `golden` command with version-pinning. Accept: criterion 5. Stage: mvp
+- [ ] M9 HTML audit report (self-contained, escaped). Accept: criteria 4 and 6. Stage: mvp
+- [ ] M10 JSON-like rule-config reader (rule versions, rates). Stage: polish
+- [ ] M11 Report polish: collapsible traces, summary table, print CSS. Stage: polish
+- [ ] M12 README walkthrough with sample output; CLI `--help`. Stage: polish
+
+## Progress log
+- 2026-09-25 M0: wrote SPEC/PLANS/README/AGENTS, `.nightshift.json`, `scripts/check.js`, `TaxRule`, `TestRunner` with 4 passing tests.
+
+## Decision log
+- 2026-09-25: Check command is `node scripts/check.js` because the runner allowlist has no Java/Maven entry; the Node script only shells out to `javac`/`java`.
+- 2026-09-25: No JUnit; a tiny custom `TestRunner` keeps the project standard-library-only.
+- 2026-09-25: Money is integer cents; tax rate in basis points; half-up rounding pinned as legacy behavior (`tax-v1`).
