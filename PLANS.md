@@ -4,7 +4,7 @@ Each milestone fits one ~30-minute session. Acceptance command for all: `node sc
 
 ## Milestones
 - [x] M0 setup (spec): docs, skeleton, tax rule, test runner. Stage: mvp
-- [ ] M1 Core model: `Scenario`, `Sku`, `Order`, `Decision`, `TraceEntry` records; trace formatting test. Stage: mvp
+- [x] M1 Core model: `Scenario`, `Sku`, `Order`, `Decision`, `TraceEntry` records; trace formatting test. Stage: mvp
 - [ ] M2 CSV reader: parse stock/orders/tax-rate files with line-numbered errors. Accept: check + `java -cp build/classes lab.Main run --input samples/basic`. Stage: mvp
 - [ ] M3 Rule interface + registry with versions; port tax rule into it with trace output. Stage: mvp
 - [ ] M4 Inventory reservation rule with trace and unit tests. Stage: mvp
@@ -19,8 +19,10 @@ Each milestone fits one ~30-minute session. Acceptance command for all: `node sc
 
 ## Progress log
 - 2026-09-25 M0: wrote SPEC/PLANS/README/AGENTS, `.nightshift.json`, `scripts/check.js`, `TaxRule`, `TestRunner` with 4 passing tests.
+- 2026-09-26 M1: added `Sku`, `Order`, `Scenario`, `Decision`, `TraceEntry` records with validation and `TraceEntry.format()`; 4 new tests (not run locally, verified by reading).
 
 ## Decision log
 - 2026-09-25: Check command is `node scripts/check.js` because the runner allowlist has no Java/Maven entry; the Node script only shells out to `javac`/`java`.
 - 2026-09-25: No JUnit; a tiny custom `TestRunner` keeps the project standard-library-only.
 - 2026-09-25: Money is integer cents; tax rate in basis points; half-up rounding pinned as legacy behavior (`tax-v1`).
+- 2026-09-26: Records validate in compact constructors (fail fast on negatives); `Scenario` holds one flat tax rate in bps; trace line format is `rule=<id>@<version> inputs=[..] result=..` so every line names rule id and version (criterion 3).

@@ -26,6 +26,20 @@ public final class TestRunner {
             threw = true;
         }
         check("tax rejects negatives", threw);
+        TraceEntry t = new TraceEntry("tax", TaxRule.VERSION, "net=1050 bps=1000", "105");
+        check("trace format", t.format().equals("rule=tax@tax-v1 inputs=[net=1050 bps=1000] result=105"));
+        Scenario sc = new Scenario(
+                java.util.List.of(new Sku("SKU-0001", "Warehouse-A", 5, 200)),
+                java.util.List.of(new Order("O-1", "SKU-0001", 2, 1)), 1_000);
+        check("scenario holds data", sc.skus().size() == 1 && sc.orders().get(0).quantity() == 2);
+        check("decision fields", new Decision("O-1", 2, 400, 40).taxCents() == 40);
+        boolean bad = false;
+        try {
+            new Order("O-1", "SKU-0001", 0, 1);
+        } catch (IllegalArgumentException e) {
+            bad = true;
+        }
+        check("order rejects zero quantity", bad);
         System.out.println((total - failures) + "/" + total + " tests passed");
         if (failures > 0) {
             System.exit(1);
