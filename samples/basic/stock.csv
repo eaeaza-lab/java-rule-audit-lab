@@ -1,0 +1,3 @@
+sku_id,warehouse,on_hand,unit_price_cents
+SKU-0001,Warehouse-A,12,250
+SKU-0002,Warehouse-A,4,875

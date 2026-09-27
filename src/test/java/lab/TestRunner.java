@@ -1,5 +1,9 @@
 package lab;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 /** Minimal dependency-free test runner; exits non-zero on any failure. */
 public final class TestRunner {
     private static int failures = 0;
@@ -15,7 +19,7 @@ public final class TestRunner {
         }
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         check("tax rounds half up", TaxRule.taxCents(1_050, 1_000) == 105);
         check("tax half cent rounds up", TaxRule.taxCents(5, 1_000) == 1);
         check("tax zero", TaxRule.taxCents(0, 2_000) == 0);
@@ -40,6 +44,22 @@ public final class TestRunner {
             bad = true;
         }
         check("order rejects zero quantity", bad);
+        Scenario fromCsv = CsvScenarioReader.read(Path.of("samples", "basic"));
+        check("csv reader loads basic scenario", fromCsv.skus().size() == 2
+                && fromCsv.orders().size() == 2 && fromCsv.taxRateBps() == 750);
+        Path invalid = Path.of("build", "csv-reader-invalid");
+        Files.createDirectories(invalid);
+        Files.writeString(invalid.resolve("stock.csv"),
+                "sku_id,warehouse,on_hand,unit_price_cents\nSKU-0001,Warehouse-A,nope,250\n");
+        Files.writeString(invalid.resolve("orders.csv"), "order_id,sku_id,quantity,priority\n");
+        Files.writeString(invalid.resolve("tax-rate.csv"), "tax_rate_bps\n750\n");
+        boolean lineNumbered = false;
+        try {
+            CsvScenarioReader.read(invalid);
+        } catch (CsvInputException exception) {
+            lineNumbered = exception.getMessage().equals("stock.csv:2: invalid integer for on_hand");
+        }
+        check("csv reader reports file and line", lineNumbered);
         System.out.println((total - failures) + "/" + total + " tests passed");
         if (failures > 0) {
             System.exit(1);
