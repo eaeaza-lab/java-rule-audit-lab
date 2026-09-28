@@ -2,8 +2,8 @@
 
 An offline Java CLI that runs synthetic inventory, allocation, and tax scenarios through explicit, versioned business rules. It emits an explainable decision trace, invariant violations, and a compact HTML audit report. Golden edge-case tests pin intentional legacy behavior so it cannot be silently "fixed".
 
-Status: **MVP in progress**. Scenario CSV input is available; allocation, invariant checks, reports,
-and generated scenarios are upcoming milestones.
+Status: **MVP in progress**. Scenario CSV input and the versioned tax-rule registry are available;
+allocation, invariant checks, reports, and generated scenarios are upcoming milestones.
 
 ## Run
 
@@ -16,6 +16,15 @@ java -cp build/classes lab.Main run --input samples/basic
 ```
 
 Java standard library only. Synthetic data only. No network.
+
+## Rule trace foundation
+
+Rules are registered by a stable id and behavior version. The tax rule is registered as
+`tax@tax-v1`; evaluating it returns both the integer-cent result and a stable trace line such as:
+
+```
+rule=tax@tax-v1 inputs=[netCents=5 rateBps=1000] result=taxCents=1
+```
 
 ## Scenario CSV files
 

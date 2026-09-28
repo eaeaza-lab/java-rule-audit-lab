@@ -30,6 +30,20 @@ public final class TestRunner {
             threw = true;
         }
         check("tax rejects negatives", threw);
+        RuleResult<Long> taxResult = TaxRule.INSTANCE.evaluate(new TaxInput(5, 1_000));
+        check("tax rule returns tax result and trace", taxResult.value() == 1
+                && taxResult.trace().format().equals(
+                        "rule=tax@tax-v1 inputs=[netCents=5 rateBps=1000] result=taxCents=1"));
+        RuleRegistry registry = RuleRegistry.standard();
+        check("registry finds tax rule by version", registry.find("tax", TaxRule.VERSION).orElseThrow() == TaxRule.INSTANCE
+                && registry.all().size() == 1);
+        boolean duplicateRule = false;
+        try {
+            registry.register(TaxRule.INSTANCE);
+        } catch (IllegalArgumentException e) {
+            duplicateRule = true;
+        }
+        check("registry rejects duplicate version", duplicateRule);
         TraceEntry t = new TraceEntry("tax", TaxRule.VERSION, "net=1050 bps=1000", "105");
         check("trace format", t.format().equals("rule=tax@tax-v1 inputs=[net=1050 bps=1000] result=105"));
         Scenario sc = new Scenario(
