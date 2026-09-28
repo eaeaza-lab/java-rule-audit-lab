@@ -36,7 +36,8 @@ public final class TestRunner {
                         "rule=tax@tax-v1 inputs=[netCents=5 rateBps=1000] result=taxCents=1"));
         RuleRegistry registry = RuleRegistry.standard();
         check("registry finds tax rule by version", registry.find("tax", TaxRule.VERSION).orElseThrow() == TaxRule.INSTANCE
-                && registry.all().size() == 1);
+                && registry.find("inventory-reservation", InventoryReservationRule.VERSION).orElseThrow()
+                        == InventoryReservationRule.INSTANCE && registry.all().size() == 2);
         boolean duplicateRule = false;
         try {
             registry.register(TaxRule.INSTANCE);
@@ -74,6 +75,23 @@ public final class TestRunner {
             lineNumbered = exception.getMessage().equals("stock.csv:2: invalid integer for on_hand");
         }
         check("csv reader reports file and line", lineNumbered);
+        RuleResult<Reservation> partialReservation = InventoryReservationRule.INSTANCE.evaluate(
+                new ReservationInput("SKU-0001", 3, 5));
+        check("reservation limits request to available stock", partialReservation.value().equals(new Reservation(3, 0))
+                && partialReservation.trace().format().equals("rule=inventory-reservation@reservation-v1 "
+                        + "inputs=[skuId=SKU-0001 availableQty=3 requestedQty=5] "
+                        + "result=reservedQty=3 remainingQty=0"));
+        check("reservation preserves surplus stock", InventoryReservationRule.INSTANCE.evaluate(
+                new ReservationInput("SKU-0001", 5, 2)).value().equals(new Reservation(2, 3)));
+        check("reservation accepts empty request", InventoryReservationRule.INSTANCE.evaluate(
+                new ReservationInput("SKU-0001", 5, 0)).value().equals(new Reservation(0, 5)));
+        boolean invalidReservation = false;
+        try {
+            new ReservationInput("SKU-0001", -1, 1);
+        } catch (IllegalArgumentException e) {
+            invalidReservation = true;
+        }
+        check("reservation rejects negative quantities", invalidReservation);
         System.out.println((total - failures) + "/" + total + " tests passed");
         if (failures > 0) {
             System.exit(1);

@@ -40,6 +40,7 @@ public final class RuleRegistry {
     public static RuleRegistry standard() {
         RuleRegistry registry = new RuleRegistry();
         registry.register(TaxRule.INSTANCE);
+        registry.register(InventoryReservationRule.INSTANCE);
         return registry;
     }
 }

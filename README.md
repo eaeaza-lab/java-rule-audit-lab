@@ -2,8 +2,9 @@
 
 An offline Java CLI that runs synthetic inventory, allocation, and tax scenarios through explicit, versioned business rules. It emits an explainable decision trace, invariant violations, and a compact HTML audit report. Golden edge-case tests pin intentional legacy behavior so it cannot be silently "fixed".
 
-Status: **MVP in progress**. Scenario CSV input and the versioned tax-rule registry are available;
-allocation, invariant checks, reports, and generated scenarios are upcoming milestones.
+Status: **MVP in progress**. Scenario CSV input, a versioned tax-rule registry, and auditable
+inventory reservation are available; allocation, invariant checks, reports, and generated scenarios
+are upcoming milestones.
 
 ## Run
 
@@ -24,6 +25,16 @@ Rules are registered by a stable id and behavior version. The tax rule is regist
 
 ```
 rule=tax@tax-v1 inputs=[netCents=5 rateBps=1000] result=taxCents=1
+```
+
+## Inventory reservation
+
+`inventory-reservation@reservation-v1` makes one explicit per-SKU stock transition: it reserves
+the lesser of the requested and available quantities, then records the units left. For example,
+an availability of 3 against a request for 5 produces:
+
+```
+rule=inventory-reservation@reservation-v1 inputs=[skuId=SKU-0001 availableQty=3 requestedQty=5] result=reservedQty=3 remainingQty=0
 ```
 
 ## Scenario CSV files
