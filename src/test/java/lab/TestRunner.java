@@ -37,7 +37,9 @@ public final class TestRunner {
         RuleRegistry registry = RuleRegistry.standard();
         check("registry finds tax rule by version", registry.find("tax", TaxRule.VERSION).orElseThrow() == TaxRule.INSTANCE
                 && registry.find("inventory-reservation", InventoryReservationRule.VERSION).orElseThrow()
-                        == InventoryReservationRule.INSTANCE && registry.all().size() == 2);
+                        == InventoryReservationRule.INSTANCE
+                && registry.find("allocation", AllocationRule.VERSION).orElseThrow() == AllocationRule.INSTANCE
+                && registry.all().size() == 3);
         boolean duplicateRule = false;
         try {
             registry.register(TaxRule.INSTANCE);
@@ -92,6 +94,25 @@ public final class TestRunner {
             invalidReservation = true;
         }
         check("reservation rejects negative quantities", invalidReservation);
+        RuleResult<AllocationResult> allocationResult = AllocationRule.INSTANCE.evaluate(new AllocationInput(
+                java.util.List.of(new Sku("SKU-0001", "Warehouse-A", 5, 200)),
+                java.util.List.of(new Order("ORD-0002", "SKU-0001", 3, 1),
+                        new Order("ORD-0001", "SKU-0001", 4, 1),
+                        new Order("ORD-0003", "SKU-0001", 2, 2))));
+        check("allocation prioritizes then breaks ties by order id", allocationResult.value().allocations().equals(
+                java.util.List.of(new Allocation("ORD-0001", "SKU-0001", 4, 4),
+                        new Allocation("ORD-0002", "SKU-0001", 3, 1),
+                        new Allocation("ORD-0003", "SKU-0001", 2, 0)))
+                && allocationResult.value().remainingQtyBySku().get("SKU-0001") == 0);
+        check("allocation trace records ordered outcome", allocationResult.trace().format().equals(
+                "rule=allocation@allocation-v1 inputs=[stockQtyBySku=SKU-0001:5 "
+                        + "orderIds=ORD-0001,ORD-0002,ORD-0003] "
+                        + "result=allocations=ORD-0001:4,ORD-0002:1,ORD-0003:0 remainingQtyBySku=SKU-0001:0"));
+        RuleResult<AllocationResult> multiWarehouse = AllocationRule.INSTANCE.evaluate(new AllocationInput(
+                java.util.List.of(new Sku("SKU-0001", "Warehouse-A", 2, 200),
+                        new Sku("SKU-0001", "Warehouse-B", 3, 200)),
+                java.util.List.of(new Order("ORD-0001", "SKU-0001", 5, 1))));
+        check("allocation combines stock lines for a sku", multiWarehouse.value().allocations().get(0).allocatedQty() == 5);
         System.out.println((total - failures) + "/" + total + " tests passed");
         if (failures > 0) {
             System.exit(1);

@@ -41,6 +41,7 @@ public final class RuleRegistry {
         RuleRegistry registry = new RuleRegistry();
         registry.register(TaxRule.INSTANCE);
         registry.register(InventoryReservationRule.INSTANCE);
+        registry.register(AllocationRule.INSTANCE);
         return registry;
     }
 }
