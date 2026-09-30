@@ -113,6 +113,22 @@ public final class TestRunner {
                         new Sku("SKU-0001", "Warehouse-B", 3, 200)),
                 java.util.List.of(new Order("ORD-0001", "SKU-0001", 5, 1))));
         check("allocation combines stock lines for a sku", multiWarehouse.value().allocations().get(0).allocatedQty() == 5);
+        Scenario invariantScenario = new Scenario(
+                java.util.List.of(new Sku("SKU-0001", "Warehouse-A", 3, 200)),
+                java.util.List.of(new Order("ORD-0001", "SKU-0001", 3, 1)), 1_000);
+        AllocationResult validAllocation = new AllocationResult(
+                java.util.List.of(new Allocation("ORD-0001", "SKU-0001", 3, 3)),
+                java.util.Map.of("SKU-0001", 0));
+        check("invariants accept reconciled allocation and tax base", InvariantChecker.check(invariantScenario,
+                validAllocation, java.util.List.of(new Decision("ORD-0001", 3, 600, 60))).isEmpty());
+        AllocationResult invalidAllocation = new AllocationResult(
+                java.util.List.of(new Allocation("ORD-0001", "SKU-0001", 4, 4)),
+                java.util.Map.of("SKU-0001", -1));
+        java.util.List<InvariantViolation> invariantViolations = InvariantChecker.check(invariantScenario,
+                invalidAllocation, java.util.List.of(new Decision("ORD-0001", 4, 700, 70)));
+        check("invariants report negative stock over-allocation and tax-base mismatch",
+                invariantViolations.stream().map(InvariantViolation::code).toList().equals(
+                        java.util.List.of("negative-stock", "over-allocation", "tax-base-mismatch")));
         System.out.println((total - failures) + "/" + total + " tests passed");
         if (failures > 0) {
             System.exit(1);

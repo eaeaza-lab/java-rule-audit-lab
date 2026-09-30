@@ -3,8 +3,8 @@
 An offline Java CLI that runs synthetic inventory, allocation, and tax scenarios through explicit, versioned business rules. It emits an explainable decision trace, invariant violations, and a compact HTML audit report. Golden edge-case tests pin intentional legacy behavior so it cannot be silently "fixed".
 
 Status: **MVP in progress**. Scenario CSV input, a versioned tax-rule registry, auditable
-inventory reservation, and deterministic allocation are available; invariant checks, reports, and
-generated scenarios are upcoming milestones.
+ inventory reservation, deterministic allocation, and post-rule invariant checks are available;
+ reports and generated scenarios are upcoming milestones.
 
 ## Run
 
@@ -64,5 +64,12 @@ tax-rate.csv: tax_rate_bps
 ```
 
 See [SPEC.md](SPEC.md) and [PLANS.md](PLANS.md).
+
+## Invariant checks
+
+Every `run` now reconciles the allocation before reporting success. It detects negative remaining
+stock, allocation beyond available SKU stock, and a mismatch between allocated tax base and the
+decisions used to calculate tax. A failed reconciliation exits with code 2 and prints stable,
+actionable violation details; HTML presentation of those findings is the next report milestone.
 
 Built by a supervised autonomous agent pipeline (nightshift).

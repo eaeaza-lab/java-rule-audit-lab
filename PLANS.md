@@ -9,7 +9,7 @@ Each milestone fits one ~30-minute session. Acceptance command for all: `node sc
 - [x] M3 Rule interface + registry with versions; port tax rule into it with trace output. Stage: mvp
 - [x] M4 Inventory reservation rule with trace and unit tests. Stage: mvp
 - [x] M5 Allocation rule (priority, then order id tie-break) with trace and tests. Stage: mvp
-- [ ] M6 Invariant checker (non-negative stock, no over-allocation, totals match); exit code 2 on violations. Accept: check + criterion 4 command. Stage: mvp
+- [x] M6 Invariant checker (non-negative stock, no over-allocation, totals match); exit code 2 on violations. Accept: check + criterion 4 command. Stage: mvp
 - [ ] M7 Seeded synthetic generator + `verify-determinism`. Accept: criterion 2. Stage: mvp
 - [ ] M8 Golden legacy-behavior cases and `golden` command with version-pinning. Accept: criterion 5. Stage: mvp
 - [ ] M9 HTML audit report (self-contained, escaped). Accept: criteria 4 and 6. Stage: mvp
@@ -24,6 +24,7 @@ Each milestone fits one ~30-minute session. Acceptance command for all: `node sc
 - 2026-09-28 M3: added a versioned rule interface and deterministic registry; `tax@tax-v1` now evaluates to both its cents result and an explainable trace entry, with registry and trace tests.
 - 2026-09-29 M4: added `inventory-reservation@reservation-v1`, which caps each SKU request at available units and traces both reserved and remaining stock; added full, partial, and empty-request tests.
 - 2026-09-30 M5: added `allocation@allocation-v1`, which allocates orders per SKU by ascending priority and then lexical order ID, traces the ordered allocation outcome, and has tie-break, depletion, and multi-stock-line tests.
+- 2026-10-01 M6: added post-allocation reconciliation for remaining stock, per-SKU allocation ceilings, and tax-base decisions; `run` prints actionable violations and exits 2 when reconciliation fails.
 
 ## Decision log
 - 2026-09-25: Check command is `node scripts/check.js` because the runner allowlist has no Java/Maven entry; the Node script only shells out to `javac`/`java`.
@@ -34,3 +35,4 @@ Each milestone fits one ~30-minute session. Acceptance command for all: `node sc
 - 2026-09-28: M3 looks rules up by both id and version, allowing a later rule version to coexist with legacy behavior instead of silently replacing it.
 - 2026-09-29: M4 represents reservation as a single-SKU request with explicit remaining quantity, so later allocation can compose it deterministically while retaining an auditable stock transition.
 - 2026-09-30: M5 aggregates multiple stock lines with the same SKU before allocation because orders reference SKUs rather than warehouses; the allocation result preserves per-SKU remaining quantities for the forthcoming invariant checker.
+- 2026-10-01: M6 derives a decision's tax base from the first stock-line price for its SKU, matching the existing aggregated allocation model; the checker deliberately reports distinct stable codes for negative stock, over-allocation, and tax-base reconciliation failures.
