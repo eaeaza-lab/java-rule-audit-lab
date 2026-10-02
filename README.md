@@ -3,8 +3,8 @@
 An offline Java CLI that runs synthetic inventory, allocation, and tax scenarios through explicit, versioned business rules. It emits an explainable decision trace, invariant violations, and a compact HTML audit report. Golden edge-case tests pin intentional legacy behavior so it cannot be silently "fixed".
 
 Status: **MVP in progress**. Scenario CSV input, a versioned tax-rule registry, auditable
- inventory reservation, deterministic allocation, and post-rule invariant checks are available;
- reports and generated scenarios are upcoming milestones.
+ inventory reservation, deterministic allocation, post-rule invariant checks, and generated
+ scenarios are available; reports are an upcoming milestone.
 
 ## Run
 
@@ -14,9 +14,19 @@ Requires JDK 21 and Node 22 (Node is only used to drive the check script).
 node scripts/check.js          # compile + run all tests
 java -cp build/classes lab.Main
 java -cp build/classes lab.Main run --input samples/basic
+java -cp build/classes lab.Main generate --seed 1 --out build/s1
+java -cp build/classes lab.Main verify-determinism --seed 1
 ```
 
 Java standard library only. Synthetic data only. No network.
+
+## Synthetic scenario generation
+
+`generate --seed <integer> --out <directory>` writes a fictional three-file CSV scenario using
+only IDs such as `SKU-0001`, `ORD-0001`, and `Warehouse-A`. The seeded generator is repeatable:
+identical seeds produce byte-identical `stock.csv`, `orders.csv`, and `tax-rate.csv` files.
+`verify-determinism --seed <integer>` independently generates the scenario twice under `build/`
+and confirms those bytes match.
 
 ## Rule trace foundation
 

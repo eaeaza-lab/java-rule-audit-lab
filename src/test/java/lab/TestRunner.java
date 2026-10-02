@@ -77,6 +77,16 @@ public final class TestRunner {
             lineNumbered = exception.getMessage().equals("stock.csv:2: invalid integer for on_hand");
         }
         check("csv reader reports file and line", lineNumbered);
+        Path generatedFirst = Path.of("build", "generated-first");
+        Path generatedSecond = Path.of("build", "generated-second");
+        SyntheticScenarioGenerator.generate(1L, generatedFirst);
+        SyntheticScenarioGenerator.generate(1L, generatedSecond);
+        check("generator creates a readable synthetic scenario", CsvScenarioReader.read(generatedFirst).skus().size() == 3
+                && CsvScenarioReader.read(generatedFirst).orders().size() == 6);
+        check("generator is byte-identical for the same seed", Files.mismatch(
+                generatedFirst.resolve("stock.csv"), generatedSecond.resolve("stock.csv")) == -1L
+                && Files.mismatch(generatedFirst.resolve("orders.csv"), generatedSecond.resolve("orders.csv")) == -1L
+                && Files.mismatch(generatedFirst.resolve("tax-rate.csv"), generatedSecond.resolve("tax-rate.csv")) == -1L);
         RuleResult<Reservation> partialReservation = InventoryReservationRule.INSTANCE.evaluate(
                 new ReservationInput("SKU-0001", 3, 5));
         check("reservation limits request to available stock", partialReservation.value().equals(new Reservation(3, 0))

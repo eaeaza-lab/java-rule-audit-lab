@@ -1,6 +1,8 @@
 package lab;
 
 import java.util.ArrayList;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
 import java.nio.file.Path;
 
@@ -8,6 +10,27 @@ public final class Main {
     private Main() {}
 
     public static void main(String[] args) {
+        if (args.length == 5 && args[0].equals("generate") && args[1].equals("--seed")
+                && args[3].equals("--out")) {
+            try {
+                SyntheticScenarioGenerator.generate(Long.parseLong(args[2]), Path.of(args[4]));
+                System.out.println("Generated synthetic scenario in " + args[4]);
+            } catch (IllegalArgumentException exception) {
+                System.err.println("Generation error: " + exception.getMessage());
+                System.exit(1);
+            }
+            return;
+        }
+        if (args.length == 3 && args[0].equals("verify-determinism") && args[1].equals("--seed")) {
+            try {
+                verifyDeterminism(Long.parseLong(args[2]));
+                System.out.println("Determinism verified for seed " + args[2]);
+            } catch (IllegalArgumentException exception) {
+                System.err.println("Determinism error: " + exception.getMessage());
+                System.exit(1);
+            }
+            return;
+        }
         if (args.length == 3 && args[0].equals("run") && args[1].equals("--input")) {
             try {
                 Scenario scenario = CsvScenarioReader.read(Path.of(args[2]));
@@ -31,6 +54,23 @@ public final class Main {
             return;
         }
         System.out.println("java-rule-audit-lab (work in progress), rule " + TaxRule.VERSION);
+    }
+
+    private static void verifyDeterminism(long seed) {
+        Path first = Path.of("build", "determinism-first");
+        Path second = Path.of("build", "determinism-second");
+        SyntheticScenarioGenerator.generate(seed, first);
+        SyntheticScenarioGenerator.generate(seed, second);
+        for (String name : List.of("stock.csv", "orders.csv", "tax-rate.csv")) {
+            try {
+                if (!java.util.Arrays.equals(Files.readAllBytes(first.resolve(name)),
+                        Files.readAllBytes(second.resolve(name)))) {
+                    throw new IllegalArgumentException("generated " + name + " differs for the same seed");
+                }
+            } catch (IOException exception) {
+                throw new IllegalArgumentException("cannot verify generated " + name, exception);
+            }
+        }
     }
 
     private static List<Decision> decisions(Scenario scenario, AllocationResult allocationResult) {
