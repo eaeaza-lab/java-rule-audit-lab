@@ -87,6 +87,41 @@ public final class TestRunner {
                 generatedFirst.resolve("stock.csv"), generatedSecond.resolve("stock.csv")) == -1L
                 && Files.mismatch(generatedFirst.resolve("orders.csv"), generatedSecond.resolve("orders.csv")) == -1L
                 && Files.mismatch(generatedFirst.resolve("tax-rate.csv"), generatedSecond.resolve("tax-rate.csv")) == -1L);
+        check("golden cases pin legacy rule behavior", GoldenCases.verify(RuleRegistry.standard()) == 3);
+        RuleRegistry missingLegacyTax = new RuleRegistry();
+        missingLegacyTax.register(AllocationRule.INSTANCE);
+        boolean goldenPinsVersion = false;
+        try {
+            GoldenCases.verify(missingLegacyTax);
+        } catch (IllegalStateException e) {
+            goldenPinsVersion = e.getMessage().equals("golden case requires tax@tax-v1");
+        }
+        check("golden cases require pinned rule version", goldenPinsVersion);
+        RuleRegistry changedPinnedTax = new RuleRegistry();
+        changedPinnedTax.register(new Rule<TaxInput, Long>() {
+            @Override
+            public String id() {
+                return "tax";
+            }
+
+            @Override
+            public String version() {
+                return "tax-v1";
+            }
+
+            @Override
+            public RuleResult<Long> evaluate(TaxInput input) {
+                return new RuleResult<>(0L, new TraceEntry(id(), version(), "changed", "taxCents=0"));
+            }
+        });
+        changedPinnedTax.register(AllocationRule.INSTANCE);
+        boolean goldenPinsBehavior = false;
+        try {
+            GoldenCases.verify(changedPinnedTax);
+        } catch (IllegalStateException e) {
+            goldenPinsBehavior = e.getMessage().contains("half-cent amounts must round up");
+        }
+        check("golden cases reject changed behavior at a pinned version", goldenPinsBehavior);
         RuleResult<Reservation> partialReservation = InventoryReservationRule.INSTANCE.evaluate(
                 new ReservationInput("SKU-0001", 3, 5));
         check("reservation limits request to available stock", partialReservation.value().equals(new Reservation(3, 0))

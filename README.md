@@ -16,6 +16,7 @@ java -cp build/classes lab.Main
 java -cp build/classes lab.Main run --input samples/basic
 java -cp build/classes lab.Main generate --seed 1 --out build/s1
 java -cp build/classes lab.Main verify-determinism --seed 1
+java -cp build/classes lab.Main golden
 ```
 
 Java standard library only. Synthetic data only. No network.
@@ -36,6 +37,13 @@ Rules are registered by a stable id and behavior version. The tax rule is regist
 ```
 rule=tax@tax-v1 inputs=[netCents=5 rateBps=1000] result=taxCents=1
 ```
+
+## Golden legacy behavior
+
+`golden` runs three pinned edge cases and prints their passing count. It locks the intentional
+`tax-v1` half-up result and the `allocation-v1` priority and lexical order-ID tie-break behavior.
+The expected version strings and outcomes are independent of the live rule constants, so changing
+one of those behaviors requires a new rule version while the legacy version continues to pass.
 
 ## Inventory reservation
 

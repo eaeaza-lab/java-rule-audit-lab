@@ -31,6 +31,16 @@ public final class Main {
             }
             return;
         }
+        if (args.length == 1 && args[0].equals("golden")) {
+            try {
+                int passed = GoldenCases.verify(RuleRegistry.standard());
+                System.out.println(passed + " legacy-behavior golden cases passed");
+            } catch (IllegalStateException exception) {
+                System.err.println("Golden verification failed: " + exception.getMessage());
+                System.exit(1);
+            }
+            return;
+        }
         if (args.length == 3 && args[0].equals("run") && args[1].equals("--input")) {
             try {
                 Scenario scenario = CsvScenarioReader.read(Path.of(args[2]));
