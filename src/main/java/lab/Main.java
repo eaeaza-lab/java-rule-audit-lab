@@ -47,12 +47,24 @@ public final class Main {
         if (args.length >= 3 && args[0].equals("run") && args[1].equals("--input")) {
             try {
                 Scenario scenario = CsvScenarioReader.read(Path.of(args[2]));
-                RuleResult<AllocationResult> allocation = AllocationRule.INSTANCE.evaluate(
-                        new AllocationInput(scenario.skus(), scenario.orders()));
-                List<Decision> decisions = decisions(scenario, allocation.value());
-                List<InvariantViolation> violations = InvariantChecker.check(scenario, allocation.value(), decisions);
-                List<TraceEntry> traces = traces(scenario, allocation, decisions);
                 RunOptions options = runOptions(args);
+                RuleConfig config = options.configPath() == null ? null : RuleConfigReader.read(options.configPath());
+                if (config != null) {
+                    scenario = new Scenario(scenario.skus(), scenario.orders(), config.taxRateBps());
+                }
+                RuleRegistry registry = RuleRegistry.standard();
+                Rule<AllocationInput, AllocationResult> allocationRule = requireRule(registry, "allocation",
+                        config == null ? AllocationRule.VERSION : config.allocationVersion());
+                Rule<ReservationInput, Reservation> reservationRule = requireRule(registry, "inventory-reservation",
+                        config == null ? InventoryReservationRule.VERSION : config.reservationVersion());
+                Rule<TaxInput, Long> taxRule = requireRule(registry, "tax",
+                        config == null ? TaxRule.VERSION : config.taxVersion());
+                int taxRateBps = scenario.taxRateBps();
+                RuleResult<AllocationResult> allocation = allocationRule.evaluate(
+                        new AllocationInput(scenario.skus(), scenario.orders()));
+                List<Decision> decisions = decisions(scenario, allocation.value(), taxRule, taxRateBps);
+                List<InvariantViolation> violations = InvariantChecker.check(scenario, allocation.value(), decisions);
+                List<TraceEntry> traces = traces(scenario, allocation, decisions, reservationRule, taxRule, taxRateBps);
                 if (options.tracePath() != null) {
                     writeTrace(options.tracePath(), traces);
                 }
@@ -60,7 +72,7 @@ public final class Main {
                     HtmlAuditReport.write(options.reportPath(), scenario, traces, decisions, violations);
                 }
                 System.out.println("Loaded scenario: " + scenario.skus().size() + " stock lines, "
-                        + scenario.orders().size() + " orders, tax rate " + scenario.taxRateBps() + " bps");
+                        + scenario.orders().size() + " orders, tax rate " + taxRateBps + " bps");
                 if (!violations.isEmpty()) {
                     System.out.println("Invariant violations:");
                     for (InvariantViolation violation : violations) {
@@ -94,19 +106,21 @@ public final class Main {
         }
     }
 
-    private static List<Decision> decisions(Scenario scenario, AllocationResult allocationResult) {
+    private static List<Decision> decisions(Scenario scenario, AllocationResult allocationResult,
+            Rule<TaxInput, Long> taxRule, int taxRateBps) {
         List<Decision> decisions = new ArrayList<>();
         for (Allocation allocation : allocationResult.allocations()) {
             long unitPrice = unitPrice(scenario.skus(), allocation.skuId());
             long netCents = Math.multiplyExact((long) allocation.allocatedQty(), unitPrice);
-            long taxCents = TaxRule.taxCents(netCents, scenario.taxRateBps());
+            long taxCents = taxRule.evaluate(new TaxInput(netCents, taxRateBps)).value();
             decisions.add(new Decision(allocation.orderId(), allocation.allocatedQty(), netCents, taxCents));
         }
         return decisions;
     }
 
     private static List<TraceEntry> traces(Scenario scenario, RuleResult<AllocationResult> allocation,
-            List<Decision> decisions) {
+            List<Decision> decisions, Rule<ReservationInput, Reservation> reservationRule,
+            Rule<TaxInput, Long> taxRule, int taxRateBps) {
         List<TraceEntry> traces = new ArrayList<>();
         Map<String, Integer> remainingBySku = new LinkedHashMap<>();
         for (Sku sku : scenario.skus()) {
@@ -114,14 +128,14 @@ public final class Main {
         }
         for (Allocation item : allocation.value().allocations()) {
             int availableQty = remainingBySku.getOrDefault(item.skuId(), 0);
-            RuleResult<Reservation> reservation = InventoryReservationRule.INSTANCE.evaluate(
+            RuleResult<Reservation> reservation = reservationRule.evaluate(
                     new ReservationInput(item.skuId(), availableQty, item.requestedQty()));
             traces.add(reservation.trace());
             remainingBySku.put(item.skuId(), reservation.value().remainingQty());
         }
         traces.add(allocation.trace());
         for (Decision decision : decisions) {
-            traces.add(TaxRule.INSTANCE.evaluate(new TaxInput(decision.netCents(), scenario.taxRateBps())).trace());
+            traces.add(taxRule.evaluate(new TaxInput(decision.netCents(), taxRateBps)).trace());
         }
         return List.copyOf(traces);
     }
@@ -129,6 +143,7 @@ public final class Main {
     private static RunOptions runOptions(String[] args) {
         Path tracePath = null;
         Path reportPath = null;
+        Path configPath = null;
         for (int index = 3; index < args.length; index += 2) {
             if (index + 1 >= args.length) {
                 throw new IllegalArgumentException("missing value for " + args[index]);
@@ -137,11 +152,13 @@ public final class Main {
                 tracePath = Path.of(args[index + 1]);
             } else if (args[index].equals("--report") && reportPath == null) {
                 reportPath = Path.of(args[index + 1]);
+            } else if (args[index].equals("--config") && configPath == null) {
+                configPath = Path.of(args[index + 1]);
             } else {
-                throw new IllegalArgumentException("expected optional --trace or --report");
+                throw new IllegalArgumentException("expected optional --trace, --report, or --config");
             }
         }
-        return new RunOptions(tracePath, reportPath);
+        return new RunOptions(tracePath, reportPath, configPath);
     }
 
     private static void writeTrace(Path path, List<TraceEntry> traces) throws IOException {
@@ -156,7 +173,14 @@ public final class Main {
         Files.writeString(path, String.join("\n", lines) + "\n", StandardCharsets.UTF_8);
     }
 
-    private record RunOptions(Path tracePath, Path reportPath) {}
+    private record RunOptions(Path tracePath, Path reportPath, Path configPath) {}
+
+    @SuppressWarnings("unchecked")
+    private static <I, O> Rule<I, O> requireRule(RuleRegistry registry, String id, String version) {
+        Rule<?, ?> rule = registry.find(id, version)
+                .orElseThrow(() -> new IllegalArgumentException("rule config selects unregistered rule " + id + "@" + version));
+        return (Rule<I, O>) rule;
+    }
 
     private static long unitPrice(List<Sku> skus, String skuId) {
         for (Sku sku : skus) {

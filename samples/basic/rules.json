@@ -1,0 +1,5 @@
+{
+  "tax": { "version": "tax-v1", "rateBps": 750 },
+  "inventory-reservation": { "version": "reservation-v1" },
+  "allocation": { "version": "allocation-v1" }
+}

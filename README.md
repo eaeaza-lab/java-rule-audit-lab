@@ -15,6 +15,7 @@ node scripts/check.js          # compile + run all tests
 java -cp build/classes lab.Main
 java -cp build/classes lab.Main run --input samples/basic
 java -cp build/classes lab.Main run --input samples/basic --trace build/trace.txt --report build/report.html
+java -cp build/classes lab.Main run --input samples/basic --config samples/basic/rules.json
 java -cp build/classes lab.Main run --input samples/violations --report build/report.html  # exits 2 after writing the audit report
 java -cp build/classes lab.Main generate --seed 1 --out build/s1
 java -cp build/classes lab.Main verify-determinism --seed 1
@@ -84,6 +85,24 @@ tax-rate.csv: tax_rate_bps
 ```
 
 See [SPEC.md](SPEC.md) and [PLANS.md](PLANS.md).
+
+## Rule configuration
+
+An optional JSON-like `--config <file>` selects the registered version of each rule and supplies
+the tax rate for that run, overriding `tax-rate.csv`. This keeps a scenario's data separate from
+the explicitly audited rule choices. A configuration contains the three rule versions and an
+integer tax rate in basis points:
+
+```
+{
+  "tax": { "version": "tax-v1", "rateBps": 750 },
+  "inventory-reservation": { "version": "reservation-v1" },
+  "allocation": { "version": "allocation-v1" }
+}
+```
+
+The CLI rejects missing fields, duplicate keys, malformed values, and versions that are not
+registered, so an audit cannot silently fall back to a different rule.
 
 ## Invariant checks
 

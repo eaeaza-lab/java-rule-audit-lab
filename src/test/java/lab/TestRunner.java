@@ -77,6 +77,25 @@ public final class TestRunner {
             lineNumbered = exception.getMessage().equals("stock.csv:2: invalid integer for on_hand");
         }
         check("csv reader reports file and line", lineNumbered);
+        Path ruleConfig = Path.of("build", "rule-config-test.json");
+        Files.writeString(ruleConfig, """
+                {
+                  "tax": { "version": "tax-v1", "rateBps": 825 },
+                  "inventory-reservation": { "version": "reservation-v1" },
+                  "allocation": { "version": "allocation-v1" }
+                }
+                """);
+        RuleConfig parsedConfig = RuleConfigReader.read(ruleConfig);
+        check("rule config reads versions and tax rate", parsedConfig.equals(
+                new RuleConfig("tax-v1", "reservation-v1", "allocation-v1", 825)));
+        Files.writeString(ruleConfig, "{\"tax\":{\"version\":\"tax-v1\",\"rateBps\":1},\"tax\":{}}");
+        boolean rejectsDuplicateConfigKey = false;
+        try {
+            RuleConfigReader.read(ruleConfig);
+        } catch (IllegalArgumentException exception) {
+            rejectsDuplicateConfigKey = exception.getMessage().contains("duplicate key tax");
+        }
+        check("rule config rejects ambiguous duplicate keys", rejectsDuplicateConfigKey);
         Path generatedFirst = Path.of("build", "generated-first");
         Path generatedSecond = Path.of("build", "generated-second");
         SyntheticScenarioGenerator.generate(1L, generatedFirst);

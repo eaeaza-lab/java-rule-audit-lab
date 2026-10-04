@@ -13,7 +13,7 @@ Each milestone fits one ~30-minute session. Acceptance command for all: `node sc
 - [x] M7 Seeded synthetic generator + `verify-determinism`. Accept: criterion 2. Stage: mvp
 - [x] M8 Golden legacy-behavior cases and `golden` command with version-pinning. Accept: criterion 5. Stage: mvp
 - [x] M9 HTML audit report (self-contained, escaped). Accept: criteria 4 and 6. Stage: mvp
-- [ ] M10 JSON-like rule-config reader (rule versions, rates). Stage: polish
+- [x] M10 JSON-like rule-config reader (rule versions, rates). Stage: polish
 - [ ] M11 Report polish: collapsible traces, summary table, print CSS. Stage: polish
 - [ ] M12 README walkthrough with sample output; CLI `--help`. Stage: polish
 
@@ -28,6 +28,7 @@ Each milestone fits one ~30-minute session. Acceptance command for all: `node sc
 - 2026-10-02 M7: added a seeded fictional CSV generator and byte-level `verify-determinism` command; regression tests ensure generated scenarios are readable and identical for an equal seed.
 - 2026-10-03 M8: added three pinned legacy edge cases and the `golden` CLI command, which reports its passed-case count and fails if a historical rule version or behavior changes.
 - 2026-10-04 M9: added escaped, self-contained HTML audit reports with scenario, trace, decision, and invariant sections; `run` now writes requested trace/report files and includes a synthetic violations scenario.
+- 2026-10-05 M10: added an optional JSON-like `--config` reader that pins the tax, reservation, and allocation versions and supplies the run's tax rate; malformed, duplicate, and unregistered selections fail explicitly.
 
 ## Decision log
 - 2026-09-25: Check command is `node scripts/check.js` because the runner allowlist has no Java/Maven entry; the Node script only shells out to `javac`/`java`.
@@ -42,3 +43,4 @@ Each milestone fits one ~30-minute session. Acceptance command for all: `node sc
 - 2026-10-02: M7 uses Java's explicitly seeded `Random` and fixed row counts, IDs, UTF-8 encoding, and LF line endings so generated scenario bytes are stable across runs and suitable for direct comparison.
 - 2026-10-03: M8 stores golden rule versions and expected outcomes as literals, then evaluates the version selected from the registry; this lets a replacement implementation preserve an old version while preventing either a silent version drift or an in-place behavior change.
 - 2026-10-04: M9 treats an order for a SKU with no stock line as an `unknown-sku` invariant violation, so the engine can report a valid-but-unfulfillable input without weakening strict CSV validation.
+- 2026-10-05: M10 makes configuration opt-in through `run --config`, preserving CSV-only behavior and existing golden cases; the configuration's tax rate replaces the scenario rate for all calculation and reporting in that run.
