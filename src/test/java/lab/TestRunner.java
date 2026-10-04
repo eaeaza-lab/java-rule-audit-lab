@@ -174,6 +174,20 @@ public final class TestRunner {
         check("invariants report negative stock over-allocation and tax-base mismatch",
                 invariantViolations.stream().map(InvariantViolation::code).toList().equals(
                         java.util.List.of("negative-stock", "over-allocation", "tax-base-mismatch")));
+        AllocationResult unknownSkuAllocation = new AllocationResult(
+                java.util.List.of(new Allocation("ORD-0002", "SKU-9999", 1, 0)), java.util.Map.of());
+        check("invariants report orders for unknown stock", InvariantChecker.check(invariantScenario,
+                unknownSkuAllocation, java.util.List.of(new Decision("ORD-0002", 0, 0, 0))).stream()
+                .map(InvariantViolation::code).toList().equals(java.util.List.of("unknown-sku")));
+        Path report = Path.of("build", "audit-report-test.html");
+        HtmlAuditReport.write(report, invariantScenario,
+                java.util.List.of(new TraceEntry("rule<id", "v1", "input=<script>", "result=&ok")),
+                java.util.List.of(new Decision("ORD-<1>", 3, 600, 60)),
+                java.util.List.of(new InvariantViolation("bad<code>", "detail & <unsafe>")));
+        String reportText = Files.readString(report);
+        check("html report is self-contained and escapes content", reportText.contains("Invariant violations")
+                && reportText.contains("input=&lt;script&gt;") && reportText.contains("detail &amp; &lt;unsafe&gt;")
+                && !reportText.contains("http"));
         System.out.println((total - failures) + "/" + total + " tests passed");
         if (failures > 0) {
             System.exit(1);

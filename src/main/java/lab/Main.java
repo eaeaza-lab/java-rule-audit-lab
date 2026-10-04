@@ -3,7 +3,10 @@ package lab;
 import java.util.ArrayList;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.nio.file.Path;
 
 public final class Main {
@@ -41,13 +44,21 @@ public final class Main {
             }
             return;
         }
-        if (args.length == 3 && args[0].equals("run") && args[1].equals("--input")) {
+        if (args.length >= 3 && args[0].equals("run") && args[1].equals("--input")) {
             try {
                 Scenario scenario = CsvScenarioReader.read(Path.of(args[2]));
                 RuleResult<AllocationResult> allocation = AllocationRule.INSTANCE.evaluate(
                         new AllocationInput(scenario.skus(), scenario.orders()));
                 List<Decision> decisions = decisions(scenario, allocation.value());
                 List<InvariantViolation> violations = InvariantChecker.check(scenario, allocation.value(), decisions);
+                List<TraceEntry> traces = traces(scenario, allocation, decisions);
+                RunOptions options = runOptions(args);
+                if (options.tracePath() != null) {
+                    writeTrace(options.tracePath(), traces);
+                }
+                if (options.reportPath() != null) {
+                    HtmlAuditReport.write(options.reportPath(), scenario, traces, decisions, violations);
+                }
                 System.out.println("Loaded scenario: " + scenario.skus().size() + " stock lines, "
                         + scenario.orders().size() + " orders, tax rate " + scenario.taxRateBps() + " bps");
                 if (!violations.isEmpty()) {
@@ -57,7 +68,7 @@ public final class Main {
                     }
                     System.exit(2);
                 }
-            } catch (CsvInputException exception) {
+            } catch (IOException | IllegalArgumentException exception) {
                 System.err.println("Input error: " + exception.getMessage());
                 System.exit(1);
             }
@@ -93,6 +104,59 @@ public final class Main {
         }
         return decisions;
     }
+
+    private static List<TraceEntry> traces(Scenario scenario, RuleResult<AllocationResult> allocation,
+            List<Decision> decisions) {
+        List<TraceEntry> traces = new ArrayList<>();
+        Map<String, Integer> remainingBySku = new LinkedHashMap<>();
+        for (Sku sku : scenario.skus()) {
+            remainingBySku.merge(sku.id(), sku.onHand(), Math::addExact);
+        }
+        for (Allocation item : allocation.value().allocations()) {
+            int availableQty = remainingBySku.getOrDefault(item.skuId(), 0);
+            RuleResult<Reservation> reservation = InventoryReservationRule.INSTANCE.evaluate(
+                    new ReservationInput(item.skuId(), availableQty, item.requestedQty()));
+            traces.add(reservation.trace());
+            remainingBySku.put(item.skuId(), reservation.value().remainingQty());
+        }
+        traces.add(allocation.trace());
+        for (Decision decision : decisions) {
+            traces.add(TaxRule.INSTANCE.evaluate(new TaxInput(decision.netCents(), scenario.taxRateBps())).trace());
+        }
+        return List.copyOf(traces);
+    }
+
+    private static RunOptions runOptions(String[] args) {
+        Path tracePath = null;
+        Path reportPath = null;
+        for (int index = 3; index < args.length; index += 2) {
+            if (index + 1 >= args.length) {
+                throw new IllegalArgumentException("missing value for " + args[index]);
+            }
+            if (args[index].equals("--trace") && tracePath == null) {
+                tracePath = Path.of(args[index + 1]);
+            } else if (args[index].equals("--report") && reportPath == null) {
+                reportPath = Path.of(args[index + 1]);
+            } else {
+                throw new IllegalArgumentException("expected optional --trace or --report");
+            }
+        }
+        return new RunOptions(tracePath, reportPath);
+    }
+
+    private static void writeTrace(Path path, List<TraceEntry> traces) throws IOException {
+        List<String> lines = new ArrayList<>();
+        for (TraceEntry trace : traces) {
+            lines.add(trace.format());
+        }
+        Path parent = path.toAbsolutePath().getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
+        Files.writeString(path, String.join("\n", lines) + "\n", StandardCharsets.UTF_8);
+    }
+
+    private record RunOptions(Path tracePath, Path reportPath) {}
 
     private static long unitPrice(List<Sku> skus, String skuId) {
         for (Sku sku : skus) {

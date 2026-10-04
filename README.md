@@ -2,9 +2,9 @@
 
 An offline Java CLI that runs synthetic inventory, allocation, and tax scenarios through explicit, versioned business rules. It emits an explainable decision trace, invariant violations, and a compact HTML audit report. Golden edge-case tests pin intentional legacy behavior so it cannot be silently "fixed".
 
-Status: **MVP in progress**. Scenario CSV input, a versioned tax-rule registry, auditable
- inventory reservation, deterministic allocation, post-rule invariant checks, and generated
- scenarios are available; reports are an upcoming milestone.
+Status: **Polish in progress**. The MVP is complete: scenario CSV input, a versioned tax-rule registry, auditable
+ inventory reservation, deterministic allocation, post-rule invariant checks, generated
+ scenarios, and self-contained HTML audit reports are available.
 
 ## Run
 
@@ -14,6 +14,8 @@ Requires JDK 21 and Node 22 (Node is only used to drive the check script).
 node scripts/check.js          # compile + run all tests
 java -cp build/classes lab.Main
 java -cp build/classes lab.Main run --input samples/basic
+java -cp build/classes lab.Main run --input samples/basic --trace build/trace.txt --report build/report.html
+java -cp build/classes lab.Main run --input samples/violations --report build/report.html  # exits 2 after writing the audit report
 java -cp build/classes lab.Main generate --seed 1 --out build/s1
 java -cp build/classes lab.Main verify-determinism --seed 1
 java -cp build/classes lab.Main golden
@@ -88,6 +90,8 @@ See [SPEC.md](SPEC.md) and [PLANS.md](PLANS.md).
 Every `run` now reconciles the allocation before reporting success. It detects negative remaining
 stock, allocation beyond available SKU stock, and a mismatch between allocated tax base and the
 decisions used to calculate tax. A failed reconciliation exits with code 2 and prints stable,
-actionable violation details; HTML presentation of those findings is the next report milestone.
+ actionable violation details. Use `--report <file>` to write a compact self-contained HTML
+ audit report containing the scenario summary, rule trace, decisions, and invariant violations.
+ User-controlled CSV values are HTML-escaped, and the report has no external references.
 
 Built by a supervised autonomous agent pipeline (nightshift).

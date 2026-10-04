@@ -12,7 +12,7 @@ Each milestone fits one ~30-minute session. Acceptance command for all: `node sc
 - [x] M6 Invariant checker (non-negative stock, no over-allocation, totals match); exit code 2 on violations. Accept: check + criterion 4 command. Stage: mvp
 - [x] M7 Seeded synthetic generator + `verify-determinism`. Accept: criterion 2. Stage: mvp
 - [x] M8 Golden legacy-behavior cases and `golden` command with version-pinning. Accept: criterion 5. Stage: mvp
-- [ ] M9 HTML audit report (self-contained, escaped). Accept: criteria 4 and 6. Stage: mvp
+- [x] M9 HTML audit report (self-contained, escaped). Accept: criteria 4 and 6. Stage: mvp
 - [ ] M10 JSON-like rule-config reader (rule versions, rates). Stage: polish
 - [ ] M11 Report polish: collapsible traces, summary table, print CSS. Stage: polish
 - [ ] M12 README walkthrough with sample output; CLI `--help`. Stage: polish
@@ -27,6 +27,7 @@ Each milestone fits one ~30-minute session. Acceptance command for all: `node sc
 - 2026-10-01 M6: added post-allocation reconciliation for remaining stock, per-SKU allocation ceilings, and tax-base decisions; `run` prints actionable violations and exits 2 when reconciliation fails.
 - 2026-10-02 M7: added a seeded fictional CSV generator and byte-level `verify-determinism` command; regression tests ensure generated scenarios are readable and identical for an equal seed.
 - 2026-10-03 M8: added three pinned legacy edge cases and the `golden` CLI command, which reports its passed-case count and fails if a historical rule version or behavior changes.
+- 2026-10-04 M9: added escaped, self-contained HTML audit reports with scenario, trace, decision, and invariant sections; `run` now writes requested trace/report files and includes a synthetic violations scenario.
 
 ## Decision log
 - 2026-09-25: Check command is `node scripts/check.js` because the runner allowlist has no Java/Maven entry; the Node script only shells out to `javac`/`java`.
@@ -40,3 +41,4 @@ Each milestone fits one ~30-minute session. Acceptance command for all: `node sc
 - 2026-10-01: M6 derives a decision's tax base from the first stock-line price for its SKU, matching the existing aggregated allocation model; the checker deliberately reports distinct stable codes for negative stock, over-allocation, and tax-base reconciliation failures.
 - 2026-10-02: M7 uses Java's explicitly seeded `Random` and fixed row counts, IDs, UTF-8 encoding, and LF line endings so generated scenario bytes are stable across runs and suitable for direct comparison.
 - 2026-10-03: M8 stores golden rule versions and expected outcomes as literals, then evaluates the version selected from the registry; this lets a replacement implementation preserve an old version while preventing either a silent version drift or an in-place behavior change.
+- 2026-10-04: M9 treats an order for a SKU with no stock line as an `unknown-sku` invariant violation, so the engine can report a valid-but-unfulfillable input without weakening strict CSV validation.

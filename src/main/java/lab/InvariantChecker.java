@@ -32,6 +32,10 @@ public final class InvariantChecker {
             allocatedBySku.merge(allocation.skuId(), allocation.allocatedQty(), Math::addExact);
         }
         for (Map.Entry<String, Integer> entry : allocatedBySku.entrySet()) {
+            if (!stockBySku.containsKey(entry.getKey())) {
+                violations.add(new InvariantViolation("unknown-sku",
+                        "allocation references sku " + entry.getKey() + " with no stock line"));
+            }
             int availableQty = stockBySku.getOrDefault(entry.getKey(), 0);
             if (entry.getValue() > availableQty) {
                 violations.add(new InvariantViolation("over-allocation",
